@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}Payments - BusinessMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="h3 fw-bold mb-1">Payments Received</h2>
+            <p class="text-muted mb-0">Record of all financial inflows and settlement transactions</p>
+        </div>
+        <div>
+            <a href="{% url 'sales:payment_create' %}" class="btn btn-success text-white shadow-sm">
+                <i class="bi bi-plus-lg me-1"></i> Record New Payment
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary & Search -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="stat-card py-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small text-uppercase fw-semibold">Total Filtered Inflow</span>
+                    <h3 class="fw-bold text-success mb-0 mt-1">₹{{ total_received|floatformat:2 }}</h3>
+                </div>
+                <div class="stat-icon icon-green">
+                    <i class="bi bi-cash-stack"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="content-card p-3 h-100 d-flex align-items-center">
+                <form method="get" class="row g-2 w-100 align-items-center">
+                    <div class="col-sm-6">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" name="q" value="{{ query }}" class="form-control border-start-0" placeholder="Search reference #, customer, invoice #...">
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <select name="method" class="form-select" onchange="this.form.submit()">
+                            <option value="all" {% if method_filter == 'all' %}selected{% endif %}>All Payment Methods</option>
+                            {% for code, label in method_choices %}
+                                <option value="{{ code }}" {% if method_filter == code %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-sm-2 text-sm-end">
+                        {% if query or method_filter != 'all' %}
+                            <a href="{% url 'sales:payment_list' %}" class="btn btn-sm btn-light border text-danger">
+                                <i class="bi bi-x-circle me-1"></i> Clear
+                            </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payments Table -->
+    <div class="content-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Receipt ID</th>
+                        <th>Customer</th>
+                        <th>Invoice #</th>
+                        <th>Payment Date</th>
+                        <th>Payment Method</th>
+                        <th>Reference / UTR</th>
+                        <th>Amount Paid</th>
+                        <th>Notes</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pay in page_obj %}
+                    <tr>
+                        <td><code>#PAY-{{ pay.pk }}</code></td>
+                        <td>
+                            <a href="{% url 'customers:customer_detail' pay.invoice.customer.pk %}" class="fw-bold text-dark text-decoration-none">
+                                {{ pay.invoice.customer.name }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{% url 'sales:invoice_detail' pay.invoice.pk %}" class="text-primary text-decoration-none fw-medium">
+                                {{ pay.invoice.invoice_number }}
+                            </a>
+                        </td>
+                        <td>{{ pay.payment_date|date:"d M Y" }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark border px-2 py-1">
+                                {{ pay.get_payment_method_display }}
+                            </span>
+                        </td>
+                        <td>{{ pay.reference_number|default:"—" }}</td>
+                        <td class="fw-bold text-success fs-6">+₹{{ pay.amount|floatformat:2 }}</td>
+                        <td><small class="text-muted">{{ pay.notes|default:"—" }}</small></td>
+                        <td class="text-end">
+                            <a href="{% url 'sales:payment_delete' pay.pk %}" class="btn btn-sm btn-light border text-danger" title="Delete Payment Record">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <i class="bi bi-wallet2 fs-1 d-block mb-2 text-secondary"></i>
+                            <h5 class="fw-bold">No payment transactions found</h5>
+                            <p class="small text-muted mb-3">Record client payments against existing invoices.</p>
+                            <a href="{% url 'sales:payment_create' %}" class="btn btn-success text-white btn-sm">
+                                <i class="bi bi-plus-lg me-1"></i> Record Payment
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer bg-white border-top py-3 d-flex justify-content-between align-items-center">
+            <small class="text-muted">Showing page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</small>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if method_filter %}&method={{ method_filter }}{% endif %}">&laquo;</a>
+                        </li>
+                    {% endif %}
+                    {% for num in page_obj.paginator.page_range %}
+                        <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                            <a class="page-link" href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}{% if method_filter %}&method={{ method_filter }}{% endif %}">{{ num }}</a>
+                        </li>
+                    {% endfor %}
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if method_filter %}&method={{ method_filter }}{% endif %}">&raquo;</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

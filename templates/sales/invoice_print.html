@@ -1,0 +1,306 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice {{ invoice.invoice_number }} - BusinessMS</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f1f5f9;
+            color: #1e293b;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .invoice-sheet {
+            max-width: 860px;
+            margin: 30px auto;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 48px;
+        }
+
+        .badge-status {
+            padding: 0.4rem 0.85rem;
+            font-weight: 600;
+            font-size: 0.82rem;
+            border-radius: 30px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .badge-paid { background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .badge-partial { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .badge-unpaid { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .badge-sent { background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+        .badge-overdue { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .badge-draft { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+        .badge-cancelled { background-color: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+
+        .company-logo-box {
+            width: 48px;
+            height: 48px;
+            background: #2563eb;
+            color: #ffffff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+        }
+
+        .table-invoice th {
+            background-color: #f8fafc;
+            color: #475569;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .signature-line {
+            width: 200px;
+            border-top: 1px solid #94a3b8;
+            margin-top: 50px;
+        }
+
+        @media print {
+            body {
+                background-color: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .invoice-sheet {
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 20px !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+            }
+            @page {
+                margin: 1.2cm;
+                size: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Printable Toolbar (Hidden during print) -->
+    <div class="container-fluid no-print py-3 border-bottom bg-white shadow-sm sticky-top">
+        <div class="container d-flex justify-content-between align-items-center" style="max-width: 860px;">
+            <a href="{% url 'sales:invoice_detail' invoice.pk %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Invoice Details
+            </a>
+            <div class="d-flex gap-2">
+                <button onclick="window.print()" class="btn btn-primary btn-sm px-3 shadow-sm">
+                    <i class="bi bi-printer-fill me-1"></i> Print / Save as PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Official Invoice Document -->
+    <div class="invoice-sheet">
+        <!-- Top Company & Invoice Header -->
+        <div class="row align-items-start pb-4 mb-4 border-bottom">
+            <div class="col-7">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="company-logo-box me-3">
+                        <i class="bi bi-briefcase-fill"></i>
+                    </div>
+                    <div>
+                        <h3 class="fw-bold mb-0 text-dark">BusinessMS</h3>
+                        <small class="text-muted fw-semibold">Enterprise Management System</small>
+                    </div>
+                </div>
+                <p class="text-muted small mb-0 mt-2">
+                    101 Business Hub, Financial District<br>
+                    support@businessms.local &middot; +91 98765 43210<br>
+                    GSTIN / Tax ID: 27AABCB1234F1Z5
+                </p>
+            </div>
+            <div class="col-5 text-end">
+                <h1 class="h3 fw-bold text-primary mb-1 text-uppercase tracking-wider">INVOICE</h1>
+                <h5 class="fw-bold text-dark mb-2">#{{ invoice.invoice_number }}</h5>
+                <span class="badge-status badge-{{ invoice.status }}">
+                    {{ invoice.get_status_display }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Billing Info & Invoice Metadata -->
+        <div class="row mb-4">
+            <div class="col-6">
+                <h6 class="text-uppercase text-muted fw-bold small mb-2">Billed To:</h6>
+                <h5 class="fw-bold mb-1 text-dark">{{ invoice.customer.name }}</h5>
+                {% if invoice.customer.company %}
+                    <p class="text-secondary fw-semibold mb-1">{{ invoice.customer.company }}</p>
+                {% endif %}
+                <p class="text-muted small mb-1">
+                    {% if invoice.customer.address %}{{ invoice.customer.address }}<br>{% endif %}
+                    {{ invoice.customer.city }}{% if invoice.customer.state %}, {{ invoice.customer.state }}{% endif %} {{ invoice.customer.postal_code }}
+                </p>
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-envelope me-1"></i>{{ invoice.customer.email }}
+                    {% if invoice.customer.phone %}&middot; <i class="bi bi-telephone me-1"></i>{{ invoice.customer.phone }}{% endif %}
+                </p>
+            </div>
+            <div class="col-6 text-end">
+                <div class="small">
+                    <div class="mb-1 text-muted">
+                        Issue Date: <strong class="text-dark ms-2">{{ invoice.issue_date|date:"F d, Y" }}</strong>
+                    </div>
+                    <div class="mb-1 text-muted">
+                        Due Date: <strong class="text-dark ms-2">{{ invoice.due_date|date:"F d, Y" }}</strong>
+                    </div>
+                    <div class="mb-1 text-muted">
+                        Payment Status: <strong class="text-dark ms-2">{{ invoice.get_status_display }}</strong>
+                    </div>
+                    <div class="text-muted">
+                        Payment Terms: <strong class="text-dark ms-2">Net 15 Days</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Itemized Line Items Table -->
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered table-invoice align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 6%;">#</th>
+                        <th style="width: 48%;">Item / Description</th>
+                        <th class="text-center" style="width: 14%;">Quantity</th>
+                        <th class="text-end" style="width: 16%;">Unit Price</th>
+                        <th class="text-end" style="width: 16%;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td class="text-muted">{{ forloop.counter }}</td>
+                        <td>
+                            <strong class="text-dark d-block">{{ item.description }}</strong>
+                            {% if item.product and item.product.sku %}
+                                <small class="text-muted">SKU: <code>{{ item.product.sku }}</code></small>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ item.quantity|floatformat:2 }}</td>
+                        <td class="text-end">₹{{ item.unit_price|floatformat:2 }}</td>
+                        <td class="text-end fw-semibold">₹{{ item.total_price|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">No line items in this invoice.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Financial Summary Breakdown -->
+        <div class="row justify-content-end mb-4">
+            <div class="col-6 col-md-5">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted">Subtotal:</td>
+                        <td class="text-end fw-semibold">₹{{ invoice.subtotal|floatformat:2 }}</td>
+                    </tr>
+                    {% if invoice.tax_rate > 0 %}
+                    <tr>
+                        <td class="text-muted">Tax ({{ invoice.tax_rate }}%):</td>
+                        <td class="text-end text-muted">+₹{{ invoice.tax_amount|floatformat:2 }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if invoice.discount > 0 %}
+                    <tr>
+                        <td class="text-muted">Discount:</td>
+                        <td class="text-end text-success">-₹{{ invoice.discount|floatformat:2 }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr class="border-top border-dark">
+                        <td class="fw-bold fs-6">Grand Total:</td>
+                        <td class="text-end fw-bold fs-6 text-primary">₹{{ invoice.total_amount|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-success fw-medium">Amount Paid:</td>
+                        <td class="text-end text-success fw-medium">₹{{ invoice.paid_amount|floatformat:2 }}</td>
+                    </tr>
+                    <tr class="border-top border-2">
+                        <td class="fw-bold fs-5 text-dark">Balance Due:</td>
+                        <td class="text-end fw-bold fs-5 {% if invoice.balance_due > 0 %}text-danger{% else %}text-success{% endif %}">
+                            ₹{{ invoice.balance_due|floatformat:2 }}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Payment History (If any) -->
+        {% if payments %}
+        <div class="mb-4 pt-3 border-top">
+            <h6 class="fw-bold text-dark small text-uppercase mb-2">Payment Receipts Applied:</h6>
+            <table class="table table-sm table-bordered small mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Receipt ID</th>
+                        <th>Date</th>
+                        <th>Method</th>
+                        <th>Reference / Txn ID</th>
+                        <th class="text-end">Amount Paid</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in payments %}
+                    <tr>
+                        <td><code>#PAY-{{ p.pk }}</code></td>
+                        <td>{{ p.payment_date|date:"d M Y" }}</td>
+                        <td>{{ p.get_payment_method_display }}</td>
+                        <td>{{ p.reference_number|default:"—" }}</td>
+                        <td class="text-end fw-semibold text-success">₹{{ p.amount|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- Terms & Notes + Authorized Signatory -->
+        <div class="row pt-4 border-top mt-4">
+            <div class="col-8 text-muted small">
+                {% if invoice.notes %}
+                    <h6 class="fw-bold text-dark small mb-1">Notes:</h6>
+                    <p class="mb-3">{{ invoice.notes|linebreaks }}</p>
+                {% endif %}
+
+                {% if invoice.terms %}
+                    <h6 class="fw-bold text-dark small mb-1">Terms &amp; Conditions:</h6>
+                    <p class="mb-0">{{ invoice.terms|linebreaks }}</p>
+                {% else %}
+                    <h6 class="fw-bold text-dark small mb-1">Payment Instructions:</h6>
+                    <p class="mb-0">Please remit payments via UPI, NEFT or Bank Transfer within the due date.</p>
+                {% endif %}
+            </div>
+            <div class="col-4 text-end d-flex flex-column align-items-end justify-content-end">
+                <div class="signature-line text-center small text-muted pt-1">
+                    Authorized Signatory<br>
+                    <strong>BusinessMS Pvt. Ltd.</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

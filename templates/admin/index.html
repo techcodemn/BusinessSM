@@ -1,0 +1,258 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static admin_filters admin_stats log %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static "admin/css/dashboard.css" %}">
+{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard modern-admin-dashboard{% endblock %}
+
+{% block nav-breadcrumbs %}{% endblock %}
+
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+{% get_business_admin_stats as stats %}
+
+<div class="admin-dashboard-wrapper">
+    <!-- Top Hero Banner with Live Welcome & Actions -->
+    <div class="admin-hero-banner">
+        <div class="admin-hero-content">
+            <div class="admin-hero-text">
+                <span class="hero-badge"><i class="bi bi-shield-check me-1"></i> System Administration</span>
+                <h1 class="hero-title">Welcome back, {{ request.user.first_name|default:request.user.username|title }}!</h1>
+                <p class="hero-subtitle">Business Management System &bull; Database Control, Inventory &amp; Financial Operations</p>
+            </div>
+            <div class="admin-hero-actions">
+                <a href="{% url 'admin:sales_invoice_add' %}" class="hero-btn hero-btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i> New Invoice
+                </a>
+                <a href="{% url 'admin:products_product_add' %}" class="hero-btn hero-btn-secondary">
+                    <i class="bi bi-box-seam me-1"></i> Add Product
+                </a>
+                <a href="{% url 'admin:customers_customer_add' %}" class="hero-btn hero-btn-secondary">
+                    <i class="bi bi-person-plus me-1"></i> Add Customer
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Executive KPI Summary Cards -->
+    <div class="admin-kpi-grid">
+        <div class="admin-kpi-card kpi-customers">
+            <div class="kpi-icon"><i class="bi bi-people-fill"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-label">Total Customers</span>
+                <h3 class="kpi-value">{{ stats.customers_count }}</h3>
+                <a href="{% url 'admin:customers_customer_changelist' %}" class="kpi-link">Manage Customers &rarr;</a>
+            </div>
+        </div>
+
+        <div class="admin-kpi-card kpi-products">
+            <div class="kpi-icon"><i class="bi bi-box-seam-fill"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-label">Active Products</span>
+                <h3 class="kpi-value">{{ stats.products_count }}</h3>
+                <a href="{% url 'admin:products_product_changelist' %}" class="kpi-link">View Catalog &rarr;</a>
+            </div>
+        </div>
+
+        <div class="admin-kpi-card kpi-invoices">
+            <div class="kpi-icon"><i class="bi bi-receipt-cutoff"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-label">Invoices Created</span>
+                <h3 class="kpi-value">{{ stats.invoices_count }}</h3>
+                <a href="{% url 'admin:sales_invoice_changelist' %}" class="kpi-link">Review Invoices &rarr;</a>
+            </div>
+        </div>
+
+        <div class="admin-kpi-card kpi-revenue">
+            <div class="kpi-icon"><i class="bi bi-cash-stack"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-label">Total Collected</span>
+                <h3 class="kpi-value">₹{{ stats.total_revenue|floatformat:2 }}</h3>
+                <a href="{% url 'admin:sales_payment_changelist' %}" class="kpi-link">Payment Records &rarr;</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area: App Management Cards & Activity Feed -->
+    <div class="admin-main-grid">
+        <!-- Left: Applications Grid -->
+        <div class="admin-apps-column">
+            {% if app_list %}
+                <div class="app-cards-grid">
+                    {% for app in app_list %}
+                        <div class="app-card module app-{{ app.app_label }}">
+                            <div class="app-card-header">
+                                <div class="app-title-wrap">
+                                    <span class="app-icon">
+                                        {% if app.app_label == 'customers' %}
+                                            <i class="bi bi-people-fill text-primary"></i>
+                                        {% elif app.app_label == 'products' %}
+                                            <i class="bi bi-box-seam-fill text-indigo"></i>
+                                        {% elif app.app_label == 'sales' %}
+                                            <i class="bi bi-receipt-cutoff text-success"></i>
+                                        {% elif app.app_label == 'auth' %}
+                                            <i class="bi bi-shield-lock-fill text-amber"></i>
+                                        {% else %}
+                                            <i class="bi bi-folder-fill text-blue"></i>
+                                        {% endif %}
+                                    </span>
+                                    <div>
+                                        <h2 class="app-name">
+                                            <a href="{{ app.app_url }}">{{ app.name }}</a>
+                                        </h2>
+                                        <span class="app-models-count">{{ app.models|length }} Model{{ app.models|length|pluralize }}</span>
+                                    </div>
+                                </div>
+                                <a href="{{ app.app_url }}" class="app-browse-link" title="Open {{ app.name }}">
+                                    Explore <i class="bi bi-arrow-right-short"></i>
+                                </a>
+                            </div>
+
+                            <div class="app-card-body">
+                                <ul class="model-items-list">
+                                    {% for model in app.models %}
+                                        {% with model_name=model.object_name|lower %}
+                                            <li class="model-item-row model-{{ model_name }}">
+                                                <div class="model-title-group">
+                                                    <span class="model-bullet"></span>
+                                                    {% if model.admin_url %}
+                                                        <a href="{{ model.admin_url }}" class="model-name-link">{{ model.name }}</a>
+                                                    {% else %}
+                                                        <span class="model-name-static">{{ model.name }}</span>
+                                                    {% endif %}
+                                                </div>
+
+                                                <div class="model-actions-group">
+                                                    {% if model.add_url %}
+                                                        <a href="{{ model.add_url }}" class="btn-model-action btn-model-add" title="Add new {{ model.name }}">
+                                                            <i class="bi bi-plus"></i> Add
+                                                        </a>
+                                                    {% endif %}
+                                                    {% if model.admin_url %}
+                                                        <a href="{{ model.admin_url }}" class="btn-model-action btn-model-manage" title="Manage {{ model.name }}">
+                                                            <i class="bi bi-pencil-square"></i> Manage
+                                                        </a>
+                                                    {% endif %}
+                                                </div>
+                                            </li>
+                                        {% endwith %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-apps-panel">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <p>{% translate 'You don’t have permission to view or edit anything.' %}</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Right: Recent Actions & Quick Links Sidebar -->
+        <div class="admin-sidebar-column">
+            <!-- Quick Business Navigation Card -->
+            <div class="admin-side-card quick-nav-card">
+                <div class="side-card-header">
+                    <h3><i class="bi bi-compass-fill me-2 text-primary"></i> Main App Shortcuts</h3>
+                </div>
+                <div class="side-card-body">
+                    <a href="{% url 'core:dashboard' %}" class="quick-nav-item" target="_blank">
+                        <div class="nav-item-icon bg-blue-subtle text-primary">
+                            <i class="bi bi-speedometer2"></i>
+                        </div>
+                        <div class="nav-item-text">
+                            <strong>Live Dashboard</strong>
+                            <span>Open client dashboard view</span>
+                        </div>
+                        <i class="bi bi-box-arrow-up-right text-muted"></i>
+                    </a>
+
+                    <a href="{% url 'sales:invoice_list' %}" class="quick-nav-item" target="_blank">
+                        <div class="nav-item-icon bg-green-subtle text-success">
+                            <i class="bi bi-receipt"></i>
+                        </div>
+                        <div class="nav-item-text">
+                            <strong>Invoice Register</strong>
+                            <span>View &amp; print client bills</span>
+                        </div>
+                        <i class="bi bi-box-arrow-up-right text-muted"></i>
+                    </a>
+
+                    <a href="{% url 'products:product_list' %}" class="quick-nav-item" target="_blank">
+                        <div class="nav-item-icon bg-purple-subtle text-purple">
+                            <i class="bi bi-box"></i>
+                        </div>
+                        <div class="nav-item-text">
+                            <strong>Product Inventory</strong>
+                            <span>View catalog and stock</span>
+                        </div>
+                        <i class="bi bi-box-arrow-up-right text-muted"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Recent Actions Module -->
+            <div class="admin-side-card recent-actions-card">
+                <div class="side-card-header">
+                    <h3><i class="bi bi-clock-history me-2 text-amber"></i> {% translate 'Recent actions' %}</h3>
+                    <span class="badge-audit">Audit Log</span>
+                </div>
+                <div class="side-card-body">
+                    {% get_admin_log 8 as admin_log for_user user %}
+                    {% if not admin_log %}
+                        <div class="empty-recent-actions">
+                            <i class="bi bi-inbox text-muted"></i>
+                            <p>{% translate 'None available' %}</p>
+                            <span>Your recent additions and changes will appear here.</span>
+                        </div>
+                    {% else %}
+                        <ul class="admin-action-feed">
+                            {% for entry in admin_log %}
+                                <li class="action-feed-item">
+                                    <div class="action-indicator {% if entry.is_addition %}is-add{% elif entry.is_change %}is-change{% elif entry.is_deletion %}is-delete{% endif %}">
+                                        {% if entry.is_addition %}
+                                            <i class="bi bi-plus-lg"></i>
+                                        {% elif entry.is_change %}
+                                            <i class="bi bi-pencil-fill"></i>
+                                        {% elif entry.is_deletion %}
+                                            <i class="bi bi-trash-fill"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div class="action-details">
+                                        <div class="action-title-line">
+                                            {% if entry.is_deletion or not entry.get_admin_url %}
+                                                <strong class="action-target">{{ entry.object_repr }}</strong>
+                                            {% else %}
+                                                <a href="{{ entry.get_admin_url }}" class="action-target-link">{{ entry.object_repr }}</a>
+                                            {% endif %}
+                                            <span class="action-content-type">{{ entry.content_type }}</span>
+                                        </div>
+                                        <div class="action-meta">
+                                            <span class="action-badge-type {% if entry.is_addition %}badge-add{% elif entry.is_change %}badge-change{% elif entry.is_deletion %}badge-delete{% endif %}">
+                                                {% if entry.is_addition %}Added{% elif entry.is_change %}Updated{% elif entry.is_deletion %}Deleted{% endif %}
+                                            </span>
+                                            <span class="action-time">{{ entry.action_time|date:"d M, H:i" }}</span>
+                                        </div>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block sidebar %}
+<!-- We integrated sidebar directly into the modern grid above -->
+{% endblock %}

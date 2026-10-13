@@ -1,0 +1,40 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database (NEVER commit local SQLite database to GitHub)
+*.sqlite3
+db.sqlite3
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Static and media files
+staticfiles/
+media/
+
+# Logs
+*.log
+local_settings.py
+
+# IDE & Editor folders
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Pytest & coverage
+.pytest_cache/
+htmlcov/
+.coverage

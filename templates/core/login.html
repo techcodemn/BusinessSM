@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign In - BusinessMS{% endblock %}
+
+{% block auth_content %}
+<div class="row justify-content-center">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+            <div class="bg-primary text-white p-4 text-center">
+                <div class="d-inline-flex p-3 rounded-circle bg-white bg-opacity-25 mb-2">
+                    <i class="bi bi-briefcase-fill fs-2"></i>
+                </div>
+                <h3 class="fw-bold mb-1">BusinessMS</h3>
+                <p class="text-white-50 mb-0 small">Sign in to manage your enterprise</p>
+            </div>
+            <div class="card-body p-4 p-md-5">
+                <!-- Admin Credentials Info Box -->
+                <div class="alert alert-light border border-primary border-opacity-25 py-2 px-3 small text-dark mb-4 rounded-3 d-flex align-items-center">
+                    <i class="bi bi-shield-lock-fill text-primary fs-5 me-2"></i>
+                    <div>
+                        <strong class="d-block text-primary">Admin Login Credentials:</strong>
+                        Username: <code class="fw-bold">admin</code> &middot; Password: <code class="fw-bold">admin123</code>
+                    </div>
+                </div>
+
+                <form method="post" action="{% url 'core:login' %}">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger py-2 small">
+                            {{ form.non_field_errors.0 }}
+                        </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted"><i class="bi bi-person"></i></span>
+                            {{ form.username }}
+                        </div>
+                        {% if form.username.errors %}
+                            <div class="text-danger small mt-1">{{ form.username.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted"><i class="bi bi-lock"></i></span>
+                            {{ form.password }}
+                        </div>
+                        {% if form.password.errors %}
+                            <div class="text-danger small mt-1">{{ form.password.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+                    </button>
+                </form>
+
+                <div class="text-center mt-4 pt-3 border-top">
+                    <p class="text-muted small mb-0">Don't have an account yet? 
+                        <a href="{% url 'core:register' %}" class="text-primary fw-semibold text-decoration-none">Create Account</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

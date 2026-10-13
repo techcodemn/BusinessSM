@@ -1,0 +1,338 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - BusinessMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1 small">
+                    <li class="breadcrumb-item"><a href="{% url 'sales:invoice_list' %}" class="text-decoration-none">Invoices</a></li>
+                    <li class="breadcrumb-item active">{{ title }}</li>
+                </ol>
+            </nav>
+            <h2 class="h3 fw-bold mb-0">{{ title }}</h2>
+        </div>
+    </div>
+
+    <form method="post" id="invoiceForm">
+        {% csrf_token %}
+
+        <div class="row g-4">
+            <!-- Left / Main Card: Invoice Details & Items -->
+            <div class="col-lg-8">
+                <!-- Header Meta -->
+                <div class="content-card mb-4">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0 fw-bold"><i class="bi bi-file-earmark-text me-2 text-primary"></i>Invoice Header Information</h6>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="{{ form.customer.id_for_label }}">Customer / Client *</label>
+                                {{ form.customer }}
+                                {% if form.customer.errors %}
+                                    <div class="text-danger small mt-1">{{ form.customer.errors.0 }}</div>
+                                {% endif %}
+                                <div class="mt-1">
+                                    <small><a href="{% url 'customers:customer_create' %}" target="_blank" class="text-primary text-decoration-none">+ Add new customer</a></small>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="{{ form.invoice_number.id_for_label }}">Invoice Number *</label>
+                                {{ form.invoice_number }}
+                                {% if form.invoice_number.errors %}
+                                    <div class="text-danger small mt-1">{{ form.invoice_number.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label" for="{{ form.issue_date.id_for_label }}">Issue Date *</label>
+                                {{ form.issue_date }}
+                                {% if form.issue_date.errors %}
+                                    <div class="text-danger small mt-1">{{ form.issue_date.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label" for="{{ form.due_date.id_for_label }}">Due Date *</label>
+                                {{ form.due_date }}
+                                {% if form.due_date.errors %}
+                                    <div class="text-danger small mt-1">{{ form.due_date.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label" for="{{ form.status.id_for_label }}">Invoice Status</label>
+                                {{ form.status }}
+                                {% if form.status.errors %}
+                                    <div class="text-danger small mt-1">{{ form.status.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Line Items Table -->
+                <div class="content-card mb-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-bold"><i class="bi bi-list-check me-2 text-primary"></i>Invoice Line Items</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="addItemBtn">
+                            <i class="bi bi-plus-lg me-1"></i> Add Row
+                        </button>
+                    </div>
+                    <div class="table-responsive p-3">
+                        <table class="table table-bordered align-middle mb-0" id="itemsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 32%;">Item / Product</th>
+                                    <th style="width: 30%;">Description</th>
+                                    <th style="width: 14%;">Qty</th>
+                                    <th style="width: 16%;">Price (₹)</th>
+                                    <th style="width: 8%;" class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemsTableBody">
+                                {% if existing_items %}
+                                    {% for item in existing_items %}
+                                    <tr class="item-row">
+                                        <td>
+                                            <select name="item_product[]" class="form-select form-select-sm product-select">
+                                                <option value="">-- Custom Item --</option>
+                                                {% for p in products %}
+                                                    <option value="{{ p.id }}" data-price="{{ p.unit_price }}" data-name="{{ p.name }}" {% if item.product_id == p.id %}selected{% endif %}>
+                                                        {{ p.name }} (₹{{ p.unit_price }})
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="text" name="item_description[]" class="form-control form-control-sm item-desc" value="{{ item.description }}" placeholder="Item description" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.01" name="item_quantity[]" class="form-control form-control-sm item-qty text-center" value="{{ item.quantity }}" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.01" name="item_price[]" class="form-control form-control-sm item-price text-end" value="{{ item.unit_price }}" required>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-light border text-danger remove-row-btn"><i class="bi bi-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <!-- First Initial Row -->
+                                    <tr class="item-row">
+                                        <td>
+                                            <select name="item_product[]" class="form-select form-select-sm product-select">
+                                                <option value="">-- Custom Item --</option>
+                                                {% for p in products %}
+                                                    <option value="{{ p.id }}" data-price="{{ p.unit_price }}" data-name="{{ p.name }}">
+                                                        {{ p.name }} (₹{{ p.unit_price }})
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="text" name="item_description[]" class="form-control form-control-sm item-desc" placeholder="Product / Service description" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.01" name="item_quantity[]" class="form-control form-control-sm item-qty text-center" value="1.00" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.01" name="item_price[]" class="form-control form-control-sm item-price text-end" value="0.00" required>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-light border text-danger remove-row-btn"><i class="bi bi-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer bg-white border-top text-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="addItemBtnBottom">
+                            <i class="bi bi-plus-lg me-1"></i> Add Another Row
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Notes & Terms -->
+                <div class="content-card">
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label" for="{{ form.notes.id_for_label }}">Notes to Customer</label>
+                            {{ form.notes }}
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label" for="{{ form.terms.id_for_label }}">Payment Terms &amp; Conditions</label>
+                            {{ form.terms }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar: Live Financial Summary -->
+            <div class="col-lg-4">
+                <div class="content-card sticky-top" style="top: 20px;">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0 fw-bold"><i class="bi bi-calculator me-2 text-primary"></i>Invoice Summary</h6>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label" for="{{ form.tax_rate.id_for_label }}">Tax Rate (%)</label>
+                            {{ form.tax_rate }}
+                            <small class="text-muted">e.g. 18 for 18% GST</small>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label" for="{{ form.discount.id_for_label }}">Discount Amount (₹)</label>
+                            {{ form.discount }}
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex justify-content-between mb-2 small text-muted">
+                            <span>Subtotal:</span>
+                            <span class="fw-semibold text-dark" id="dispSubtotal">₹0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 small text-muted">
+                            <span>Tax Amount:</span>
+                            <span class="fw-semibold text-dark" id="dispTax">₹0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3 small text-muted">
+                            <span>Discount:</span>
+                            <span class="fw-semibold text-success" id="dispDiscount">₹0.00</span>
+                        </div>
+
+                        <div class="p-3 bg-primary bg-opacity-10 rounded border border-primary border-opacity-25 mb-4">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-primary">Grand Total:</span>
+                                <h3 class="fw-bold text-primary mb-0" id="dispGrandTotal">₹0.00</h3>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary py-2 fw-semibold shadow-sm">
+                                <i class="bi bi-check2-circle me-1"></i> {{ button_text }}
+                            </button>
+                            <a href="{% url 'sales:invoice_list' %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Product catalog options HTML for dynamically appended rows
+    const productOptions = `
+        <option value="">-- Custom Item --</option>
+        {% for p in products %}
+            <option value="{{ p.id }}" data-price="{{ p.unit_price }}" data-name="{{ p.name }}">
+                {{ p.name }} (₹{{ p.unit_price }})
+            </option>
+        {% endfor %}
+    `;
+
+    function addRow() {
+        const tbody = document.getElementById('itemsTableBody');
+        const tr = document.createElement('tr');
+        tr.className = 'item-row';
+        tr.innerHTML = `
+            <td>
+                <select name="item_product[]" class="form-select form-select-sm product-select">
+                    ${productOptions}
+                </select>
+            </td>
+            <td>
+                <input type="text" name="item_description[]" class="form-control form-control-sm item-desc" placeholder="Item description" required>
+            </td>
+            <td>
+                <input type="number" step="0.01" name="item_quantity[]" class="form-control form-control-sm item-qty text-center" value="1.00" required>
+            </td>
+            <td>
+                <input type="number" step="0.01" name="item_price[]" class="form-control form-control-sm item-price text-end" value="0.00" required>
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-light border text-danger remove-row-btn"><i class="bi bi-trash"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+        bindRowEvents(tr);
+        calculateLiveSummary();
+    }
+
+    document.getElementById('addItemBtn').addEventListener('click', addRow);
+    document.getElementById('addItemBtnBottom').addEventListener('click', addRow);
+
+    function bindRowEvents(row) {
+        const prodSelect = row.querySelector('.product-select');
+        const descInput = row.querySelector('.item-desc');
+        const priceInput = row.querySelector('.item-price');
+        const qtyInput = row.querySelector('.item-qty');
+        const removeBtn = row.querySelector('.remove-row-btn');
+
+        prodSelect.addEventListener('change', function() {
+            const selectedOpt = this.options[this.selectedIndex];
+            if (selectedOpt.value) {
+                descInput.value = selectedOpt.getAttribute('data-name');
+                priceInput.value = parseFloat(selectedOpt.getAttribute('data-price')).toFixed(2);
+            }
+            calculateLiveSummary();
+        });
+
+        qtyInput.addEventListener('input', calculateLiveSummary);
+        priceInput.addEventListener('input', calculateLiveSummary);
+
+        removeBtn.addEventListener('click', function() {
+            const totalRows = document.querySelectorAll('.item-row').length;
+            if (totalRows > 1) {
+                row.remove();
+                calculateLiveSummary();
+            } else {
+                alert('At least one item is required in the invoice.');
+            }
+        });
+    }
+
+    // Bind existing rows
+    document.querySelectorAll('.item-row').forEach(bindRowEvents);
+
+    // Summary calculation
+    const taxRateInput = document.getElementById('id_tax_rate');
+    const discountInput = document.getElementById('id_discount');
+
+    if (taxRateInput) taxRateInput.addEventListener('input', calculateLiveSummary);
+    if (discountInput) discountInput.addEventListener('input', calculateLiveSummary);
+
+    function calculateLiveSummary() {
+        let subtotal = 0;
+        document.querySelectorAll('.item-row').forEach(row => {
+            const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+            const price = parseFloat(row.querySelector('.item-price').value) || 0;
+            subtotal += (qty * price);
+        });
+
+        const taxRate = parseFloat(taxRateInput ? taxRateInput.value : 0) || 0;
+        const discount = parseFloat(discountInput ? discountInput.value : 0) || 0;
+
+        const taxAmount = (subtotal * taxRate) / 100;
+        const grandTotal = Math.max(0, subtotal + taxAmount - discount);
+
+        document.getElementById('dispSubtotal').textContent = '₹' + subtotal.toFixed(2);
+        document.getElementById('dispTax').textContent = '+₹' + taxAmount.toFixed(2);
+        document.getElementById('dispDiscount').textContent = '-₹' + discount.toFixed(2);
+        document.getElementById('dispGrandTotal').textContent = '₹' + grandTotal.toFixed(2);
+    }
+
+    // Run once on initial render
+    calculateLiveSummary();
+</script>
+{% endblock %}

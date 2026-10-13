@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+
+{% block title %}Invoice {{ invoice.invoice_number }} - BusinessMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Action Bar (Hidden during print) -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 no-print">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1 small">
+                    <li class="breadcrumb-item"><a href="{% url 'sales:invoice_list' %}" class="text-decoration-none">Invoices</a></li>
+                    <li class="breadcrumb-item active">{{ invoice.invoice_number }}</li>
+                </ol>
+            </nav>
+            <h2 class="h3 fw-bold mb-0">Invoice: {{ invoice.invoice_number }}</h2>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'sales:invoice_print' invoice.pk %}" target="_blank" class="btn btn-outline-secondary">
+                <i class="bi bi-printer me-1"></i> Printable Invoice View
+            </a>
+            {% if invoice.balance_due > 0 %}
+            <button type="button" class="btn btn-success text-white shadow-sm" data-bs-toggle="modal" data-bs-target="#paymentModal">
+                <i class="bi bi-cash-coin me-1"></i> Record Payment
+            </button>
+            {% endif %}
+            <a href="{% url 'sales:invoice_update' invoice.pk %}" class="btn btn-primary">
+                <i class="bi bi-pencil me-1"></i> Edit Invoice
+            </a>
+            <a href="{% url 'sales:invoice_delete' invoice.pk %}" class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- Official Printable Invoice Container -->
+    <div class="content-card invoice-container p-4 p-md-5 bg-white mb-4">
+        <!-- Invoice Header -->
+        <div class="row align-items-center pb-4 mb-4 border-bottom">
+            <div class="col-sm-6">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="rounded bg-primary text-white p-2 me-2">
+                        <i class="bi bi-briefcase-fill fs-3"></i>
+                    </div>
+                    <div>
+                        <h3 class="fw-bold mb-0 text-dark">BusinessMS</h3>
+                        <small class="text-muted">Enterprise Solutions Pvt. Ltd.</small>
+                    </div>
+                </div>
+                <p class="text-muted small mb-0">
+                    101 Business Hub, Financial District<br>
+                    support@businessms.local &middot; +91 98765 43210
+                </p>
+            </div>
+            <div class="col-sm-6 text-sm-end mt-3 mt-sm-0">
+                <h2 class="text-uppercase fw-bold text-primary mb-1">INVOICE</h2>
+                <h5 class="fw-bold text-dark mb-1">#{{ invoice.invoice_number }}</h5>
+                <span class="badge-status badge-{{ invoice.status }} fs-6">
+                    {{ invoice.get_status_display }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Billing Info & Dates -->
+        <div class="row mb-4">
+            <div class="col-sm-6 mb-3 mb-sm-0">
+                <h6 class="text-uppercase text-muted fw-bold small mb-2">Billed To:</h6>
+                <h5 class="fw-bold mb-1">{{ invoice.customer.name }}</h5>
+                {% if invoice.customer.company %}
+                    <p class="text-dark fw-medium mb-1">{{ invoice.customer.company }}</p>
+                {% endif %}
+                <p class="text-muted small mb-1">
+                    {% if invoice.customer.address %}{{ invoice.customer.address }},<br>{% endif %}
+                    {{ invoice.customer.city }}{% if invoice.customer.state %}, {{ invoice.customer.state }}{% endif %} {{ invoice.customer.postal_code }}
+                </p>
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-envelope me-1"></i>{{ invoice.customer.email }}
+                    {% if invoice.customer.phone %}&middot; <i class="bi bi-telephone me-1"></i>{{ invoice.customer.phone }}{% endif %}
+                </p>
+            </div>
+            <div class="col-sm-6 text-sm-end">
+                <div class="small">
+                    <div class="mb-1"><span class="text-muted">Issue Date:</span> <strong class="text-dark">{{ invoice.issue_date|date:"F d, Y" }}</strong></div>
+                    <div class="mb-1"><span class="text-muted">Due Date:</span> <strong class="text-dark">{{ invoice.due_date|date:"F d, Y" }}</strong></div>
+                    <div class="mb-1"><span class="text-muted">Payment Terms:</span> <strong>Net 15 Days</strong></div>
+                    {% if invoice.due_date < today and invoice.balance_due > 0 %}
+                        <div class="text-danger fw-bold"><i class="bi bi-exclamation-circle me-1"></i>This invoice is overdue</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Itemized Table -->
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 5%;">#</th>
+                        <th style="width: 50%;">Description / Item</th>
+                        <th class="text-center" style="width: 15%;">Quantity</th>
+                        <th class="text-end" style="width: 15%;">Unit Price</th>
+                        <th class="text-end" style="width: 15%;">Line Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>
+                            <strong class="d-block text-dark">{{ item.description }}</strong>
+                            {% if item.product %}
+                                <small class="text-muted">SKU: <code>{{ item.product.sku }}</code></small>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ item.quantity|floatformat:2 }}</td>
+                        <td class="text-end">₹{{ item.unit_price|floatformat:2 }}</td>
+                        <td class="text-end fw-semibold">₹{{ item.total_price|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">No line items in this invoice.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Calculations & Totals -->
+        <div class="row justify-content-end mb-4">
+            <div class="col-md-5 col-lg-4">
+                <table class="table table-sm table-borderless">
+                    <tr>
+                        <td class="text-muted">Subtotal:</td>
+                        <td class="text-end fw-semibold">₹{{ invoice.subtotal|floatformat:2 }}</td>
+                    </tr>
+                    {% if invoice.tax_rate > 0 %}
+                    <tr>
+                        <td class="text-muted">Tax ({{ invoice.tax_rate }}%):</td>
+                        <td class="text-end text-muted">+₹{{ invoice.tax_amount|floatformat:2 }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if invoice.discount > 0 %}
+                    <tr>
+                        <td class="text-muted">Discount:</td>
+                        <td class="text-end text-success">-₹{{ invoice.discount|floatformat:2 }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr class="border-top border-dark">
+                        <td class="fw-bold fs-6">Grand Total:</td>
+                        <td class="text-end fw-bold fs-6 text-primary">₹{{ invoice.total_amount|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-success fw-medium">Paid Amount:</td>
+                        <td class="text-end text-success fw-medium">₹{{ invoice.paid_amount|floatformat:2 }}</td>
+                    </tr>
+                    <tr class="border-top border-2">
+                        <td class="fw-bold fs-5 text-dark">Balance Due:</td>
+                        <td class="text-end fw-bold fs-5 {% if invoice.balance_due > 0 %}text-danger{% else %}text-success{% endif %}">
+                            ₹{{ invoice.balance_due|floatformat:2 }}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Terms and Notes -->
+        <div class="border-top pt-4 text-muted small">
+            {% if invoice.notes %}
+                <h6 class="fw-bold text-dark mb-1">Notes:</h6>
+                <p class="mb-3">{{ invoice.notes|linebreaks }}</p>
+            {% endif %}
+
+            {% if invoice.terms %}
+                <h6 class="fw-bold text-dark mb-1">Terms &amp; Conditions:</h6>
+                <p class="mb-0">{{ invoice.terms|linebreaks }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Payments Received History (Hidden during print) -->
+    <div class="content-card no-print">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold"><i class="bi bi-wallet2 me-2 text-success"></i>Payments Received History</h6>
+            {% if invoice.balance_due > 0 %}
+            <button type="button" class="btn btn-sm btn-success text-white" data-bs-toggle="modal" data-bs-target="#paymentModal">
+                <i class="bi bi-plus-lg me-1"></i> Add Payment
+            </button>
+            {% endif %}
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Receipt #</th>
+                        <th>Payment Date</th>
+                        <th>Method</th>
+                        <th>Reference / Txn ID</th>
+                        <th>Amount Paid</th>
+                        <th>Notes</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pay in payments %}
+                    <tr>
+                        <td><code>#PAY-{{ pay.pk }}</code></td>
+                        <td>{{ pay.payment_date|date:"d M Y" }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark border">{{ pay.get_payment_method_display }}</span>
+                        </td>
+                        <td>{{ pay.reference_number|default:"—" }}</td>
+                        <td class="fw-bold text-success">₹{{ pay.amount|floatformat:2 }}</td>
+                        <td><small class="text-muted">{{ pay.notes|default:"—" }}</small></td>
+                        <td class="text-end">
+                            <a href="{% url 'sales:payment_delete' pay.pk %}" class="btn btn-sm btn-light border text-danger" title="Delete Payment Record">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            No payments recorded yet for this invoice.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Recording Payment -->
+<div class="modal fade no-print" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'sales:payment_create' %}">
+                {% csrf_token %}
+                <input type="hidden" name="invoice" value="{{ invoice.pk }}">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title fw-bold" id="paymentModalLabel">
+                        <i class="bi bi-cash-stack me-2"></i>Record Payment for {{ invoice.invoice_number }}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-light border mb-3 small d-flex justify-content-between">
+                        <span>Total Due: <strong>₹{{ invoice.total_amount|floatformat:2 }}</strong></span>
+                        <span class="text-danger">Current Balance: <strong>₹{{ invoice.balance_due|floatformat:2 }}</strong></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="id_amount">Payment Amount (₹) *</label>
+                        <input type="number" step="0.01" name="amount" id="id_amount" class="form-control" value="{{ invoice.balance_due }}" max="{{ invoice.balance_due }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="id_payment_date">Payment Date *</label>
+                        <input type="date" name="payment_date" id="id_payment_date" class="form-control" value="{% now 'Y-m-d' %}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="id_payment_method">Payment Method *</label>
+                        <select name="payment_method" id="id_payment_method" class="form-select">
+                            <option value="upi">UPI / Online Transfer</option>
+                            <option value="bank_transfer">Direct Bank Transfer / NEFT</option>
+                            <option value="credit_card">Credit / Debit Card</option>
+                            <option value="cash">Cash</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="id_reference_number">Transaction Reference / UTR / Cheque #</label>
+                        <input type="text" name="reference_number" id="id_reference_number" class="form-control" placeholder="e.g. UPI-12984920">
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label" for="id_notes">Payment Notes</label>
+                        <textarea name="notes" id="id_notes" class="form-control" rows="2" placeholder="Received by..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success text-white">Save Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
