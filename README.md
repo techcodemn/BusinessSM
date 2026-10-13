@@ -78,8 +78,8 @@ git --version
 
 ### 2. Clone the Repository
 ```bash
-git clone https://github.com/<your-username>/businessms.git
-cd businessms
+git clone https://github.com/techcodemn/BusinessSM.git
+cd BusinessSM
 ```
 
 ### 3. Create & Activate a Virtual Environment
